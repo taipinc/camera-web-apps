@@ -1,0 +1,35 @@
+/* Opt-in controls shared by apps; load after shared/style.css. */
+button.circle-button { flex: 0 0 48px; width: 48px; height: 48px; min-height: 48px; padding: 0; border: 1px solid #111; border-radius: 50%; background: #fff; color: #111; }
+.circle-button img { width: 22px; height: 22px; }
+.circle-button:disabled { opacity: 0.4; }
+.record-button span, .capture-button .record-dot { width: 50%; height: 50%; border-radius: 50%; background: #df2828; }
+button.record-button[aria-pressed="true"], button.capture-button[data-state="recording"] { border-color: #df2828; background: #ffe5e5; }
+button.cycle-button { flex-direction: column; gap: 0; line-height: 1; }
+.cycle-button [data-cycle-value] { font-size: 18px; }
+.cycle-button small { font-size: 9px; margin-top: 3px; }
+.switch-control { display: inline-flex; align-items: center; gap: 8px; position: relative; cursor: pointer; }
+.switch-control input, .segmented-control input { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+.switch-track { position: relative; display: block; width: 38px; height: 24px; border: 1px solid #aaa; border-radius: 12px; background: #eee; padding: 0; }
+.switch-track::after { content: ''; position: absolute; top: 50%; left: 3px; transform: translateY(-50%); display: block; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 1px solid #aaa; transition: transform 150ms; }
+.switch-control input:checked + .switch-track { background: #111; border-color: #111; }
+.switch-control input:checked + .switch-track::after { transform: translate(14px, -50%); border-color: #fff; }
+.switch-control input:focus-visible + .switch-track, .segmented-control input:focus-visible + span { outline: 2px solid #1769d2; outline-offset: 3px; }
+.switch-control:has(input:disabled), .segmented-control label:has(input:disabled) { opacity: 0.4; cursor: default; }
+.segmented-control { display: flex; }
+.segmented-control label { position: relative; cursor: pointer; }
+.segmented-control span { display: block; padding: 10px 8px; border: 1px solid #ddd; background: #fff; }
+.segmented-control input:checked + span { background: #e5e5e5; border-color: #aaa; }
+.dial { position: relative; display: flex; flex-direction: column; align-items: center; flex: 1 0 64px; gap: 2px; min-width: 0; touch-action: none; user-select: none; -webkit-user-select: none; cursor: move; }
+.dial label { order: 0; font-size: 11px; line-height: 16px; text-align: center; white-space: nowrap; pointer-events: none; }
+.dial svg { order: 1; width: 60px; height: 60px; fill: none; stroke-width: 8; pointer-events: none; }
+.dial output { order: 2; font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.dial-track { stroke: #ddd; }
+.dial-fill { stroke: #111; }
+.dial input { position: absolute; top: 0; left: 50%; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; outline: none; }
+.dial.is-dragging .dial-fill, .dial:has(input:focus-visible) .dial-fill { stroke: #1769d2; }
+.dial:has(input:disabled) { opacity: 0.4; cursor: default; }
+
+.tab-list { display: flex; position: relative; z-index: 1; padding-left: 0; }
+.tab-list [role="tab"] { border-color: #111; background: #fff; color: #555; margin-bottom: -1px; margin-left: -1px; font-size: 12px; padding: 10px 12px; }
+.tab-list [aria-selected="true"] { border-color: #111; border-bottom-color: #fff; color: #111; }
+.tab-panel { border: 1px solid #111; padding: 12px; }

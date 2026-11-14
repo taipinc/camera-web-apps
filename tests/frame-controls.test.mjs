@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dragValue } from '../public/app/frame-stack/dials.js';
+import { dragValue } from '../public/shared/dials.js';
 import { advanceCaptureTime } from '../public/app/frame-stack/capture-timing.js';
 
 test('dial drag is relative, bounded, and snaps to integer or fractional steps', () => {
@@ -40,12 +40,12 @@ test('late callbacks skip missed capture times without queuing a burst', () => {
 // Exercise pointer interruptions without needing a browser or camera permission.
 function pointer(type, properties = {}) {
   const event = new Event(type, { cancelable: true });
-  Object.assign(event, { pointerId: 1, button: 0, buttons: 1, clientX: 0, isPrimary: true, pointerType: 'touch', ...properties });
+  Object.assign(event, { pointerId: 1, button: 0, buttons: 1, clientX: 0, clientY: 0, isPrimary: true, pointerType: 'touch', ...properties });
   return event;
 }
 
 async function dialFixture() {
-  const { bindDialDrag } = await import('../public/app/frame-stack/dials.js');
+  const { bindDialDrag } = await import('../public/shared/dials.js');
   const root = new EventTarget();
   const host = new EventTarget();
   const dial = new EventTarget();
@@ -101,4 +101,47 @@ test('drag highlighting and pointer state clear on release, interruption, hiding
     root.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 18 }));
     assert.equal(input.value, 60, interruption);
   }
+});
+
+test('dials increase upward and decrease downward as well as horizontally', async () => {
+  const { dial, input, root } = await dialFixture();
+  dial.dispatchEvent(pointer('pointerdown'));
+  root.dispatchEvent(pointer('pointermove', { clientY: -18 }));
+  assert.equal(input.value, 60);
+  root.dispatchEvent(pointer('pointermove', { clientY: 18 }));
+  assert.equal(input.value, 40);
+  root.dispatchEvent(pointer('pointermove', { clientX: 18, clientY: -18 }));
+  assert.equal(input.value, 70);
+});
+
+test('shared capture button keeps one element through camera and recording states', async () => {
+  const { updateCaptureButton } = await import('../public/shared/controls.js');
+  const attributes = {};
+  const image = {};
+  const dot = {};
+  const button = { dataset: {}, setAttribute: (name, value) => { attributes[name] = value; }, querySelector: (selector) => selector === 'img' ? image : dot };
+  for (const state of ['start', 'record', 'recording', 'stopped', 'start']) {
+    updateCaptureButton(button, state);
+    assert.equal(button.dataset.state, state);
+    assert.equal(image.hidden, state !== 'start');
+    assert.equal(dot.hidden, state === 'start');
+    assert.equal(attributes['aria-pressed'], String(state === 'recording'));
+    assert.ok(attributes['aria-label']);
+  }
+});
+
+test('duration cycles through every supported value and wraps to four seconds', async () => {
+  const { initializeCycleButtons } = await import('../public/shared/controls.js');
+  const button = new EventTarget();
+  const label = {};
+  Object.assign(button, { value: '4', dataset: { cycleValues: '4 6 8 10 12', cycleLabel: 'sec' }, querySelector: () => label, setAttribute: () => {} });
+  let changes = 0;
+  button.addEventListener('input', () => { changes += 1; });
+  initializeCycleButtons({ querySelectorAll: () => [button] });
+  for (const expected of ['6', '8', '10', '12', '4']) {
+    button.dispatchEvent(new Event('click'));
+    assert.equal(button.value, expected);
+    assert.equal(label.textContent, expected);
+  }
+  assert.equal(changes, 5);
 });

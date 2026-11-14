@@ -1,13 +1,17 @@
 import { openCamera, stopStream, cameraError } from '../../shared/camera.js';
 import { frameDepth } from './slicing.js';
 import { createSlicer } from './stack-slicer.js';
-import { initializeDials } from './dials.js';
+import { initializeDials } from '../../shared/dials.js';
+import { initializeCycleButtons, initializeTabs, updateCaptureButton } from '../../shared/controls.js';
 import { advanceCaptureTime } from './capture-timing.js';
 
-const ui = Object.fromEntries(['stage', 'count', 'reset', 'preview', 'start', 'record', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
-const maxFrames = 120;
-let frameInterval = 1000 / 6;
+const ui = Object.fromEntries(['stage', 'count', 'reset', 'preview', 'capture', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
+let maxFrames = 120;
+let captureTimer;
+let frameInterval = 1000 / 30;
 initializeDials();
+initializeCycleButtons();
+initializeTabs();
 // Chronological source images and timestamps remain separate from their 3D meshes.
 const frames = [];
 let stream;
@@ -27,23 +31,25 @@ function status(message = '') {
 }
 
 function updateControls() {
-  ui.start.hidden = Boolean(stream);
-  ui.start.disabled = !ready || busy;
-  ui.record.hidden = !stream;
-  ui.record.disabled = !stream || busy || frames.length >= maxFrames;
-  ui.record.textContent = capturing ? 'Stop' : 'Capture';
-  ui.record.setAttribute('aria-pressed', String(capturing));
+  updateCaptureButton(ui.capture, capturing ? 'recording' : stream ? (frames.length ? 'stopped' : 'record') : 'start');
+  ui.capture.disabled = !ready || busy;
   ui.flip.disabled = !stream || busy || capturing;
   ui.clear.disabled = !frames.length || capturing;
   ui.reset.disabled = !ready;
   ui.fps.disabled = capturing;
+  ui.duration.disabled = capturing;
+  ui.count.hidden = !capturing;
   ui.count.value = `${frames.length} / ${maxFrames} frames`;
 }
 
 function stopCapture() {
+  clearTimeout(captureTimer);
   const wasCapturing = capturing;
   capturing = false;
-  if (wasCapturing) view?.stopLive();
+  if (wasCapturing) {
+    view?.stopLive();
+    view?.showStack();
+  }
   if (ui.preview.cancelVideoFrameCallback && captureCallback !== undefined) {
     ui.preview.cancelVideoFrameCallback(captureCallback);
   } else {
@@ -113,8 +119,8 @@ function captureFrame(now) {
       nextFrameAt = advanceCaptureTime(now, nextFrameAt, frameInterval);
       updateControls();
       if (frames.length >= maxFrames) {
-        stopCapture();
-        status('120-frame limit reached. Clear to capture again.');
+        closeCamera();
+        status();
         return;
       }
     }
@@ -134,30 +140,38 @@ function clearFrames() {
   updateControls();
 }
 
-ui.start.addEventListener('click', startCamera);
 ui.flip.addEventListener('click', () => {
   closeCamera();
   facing = facing === 'environment' ? 'user' : 'environment';
   startCamera();
 });
-ui.record.addEventListener('click', () => {
+ui.capture.addEventListener('click', () => {
+  if (!stream) { startCamera(); return; }
   if (capturing) { stopCapture(); return; }
   clearFrames();
   status();
   startedAt = performance.now();
   nextFrameAt = startedAt;
   frameInterval = 1000 / Number(ui.fps.value);
+  maxFrames = Number(ui.fps.value) * Number(ui.duration.value);
   capturing = true;
+  captureTimer = setTimeout(() => { closeCamera(); status(); }, Number(ui.duration.value) * 1000);
   view.startLive();
   updateControls();
   captureFrame(startedAt);
 });
+for (const control of [ui.fps, ui.duration]) {
+  control.addEventListener('input', () => {
+    if (!frames.length) maxFrames = Number(ui.fps.value) * Number(ui.duration.value);
+    updateControls();
+  });
+}
 ui.clear.addEventListener('click', () => {
   clearFrames();
   if (stream) view.startLive();
   status();
 });
-ui.reset.addEventListener('click', () => view.reset());
+ui.reset.addEventListener('click', () => view.toggleView());
 document.addEventListener('visibilitychange', () => { if (document.hidden) closeCamera(); });
 window.addEventListener('pagehide', closeCamera);
 
@@ -187,7 +201,17 @@ async function initializeView() {
   let liveContext;
   let lastVideoTime = -1;
   let imageHeight = 2.1375;
-  function render() { renderer.render(scene, camera); }
+  let transitionFrame;
+  function isFrontView() {
+    const direction = camera.position.clone().sub(controls.target).normalize();
+    return direction.z > 0 && Math.abs(direction.x) < 0.001 && Math.abs(direction.y) < 0.001;
+  }
+  function render() {
+    const label = isFrontView() ? 'Isometric view' : 'Front view';
+    ui.reset.setAttribute('aria-label', label);
+    ui.reset.title = label;
+    renderer.render(scene, camera);
+  }
   const slicer = createSlicer(THREE, scene, render);
   function fitProjection() {
     const aspect = ui.stage.clientWidth / Math.max(1, ui.stage.clientHeight);
@@ -198,13 +222,67 @@ async function initializeView() {
     camera.bottom = -halfHeight;
     camera.updateProjectionMatrix();
   }
-  function reset(front = true) {
-    camera.position.set(front ? 0 : 5, front ? 0 : 2, 12);
+  function cancelTransition() {
+    cancelAnimationFrame(transitionFrame);
+  }
+  function reset() {
+    cancelTransition();
+    camera.position.set(0, 0, 12);
     controls.target.set(0, 0, 0);
     camera.zoom = 1;
     fitProjection();
     controls.update();
     render();
+  }
+  function showStack() {
+    cancelTransition();
+    const viewCards = liveCard ? [...cards, liveCard] : cards;
+    if (!viewCards.length) return;
+    // Include every recorded card, even when the slicer currently hides it.
+    const bounds = new THREE.Box3();
+    viewCards.forEach((card) => {
+      card.updateWorldMatrix(true, false);
+      bounds.union(new THREE.Box3().setFromObject(card));
+    });
+    const target = bounds.getCenter(new THREE.Vector3());
+    const direction = new THREE.Vector3(1, 1, 1).normalize();
+    const destination = target.clone().addScaledVector(direction, 12);
+    const rotation = new THREE.Matrix4().lookAt(destination, target, camera.up);
+    const inverse = new THREE.Quaternion().setFromRotationMatrix(rotation).invert();
+    let halfWidth = 0;
+    let halfHeight = 0;
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
+          const point = new THREE.Vector3(x, y, z).sub(target).applyQuaternion(inverse);
+          halfWidth = Math.max(halfWidth, Math.abs(point.x));
+          halfHeight = Math.max(halfHeight, Math.abs(point.y));
+        }
+      }
+    }
+    animateView(destination, target, () => Math.min(controls.maxZoom,
+      (camera.right - camera.left) / (2 * halfWidth * 1.15),
+      (camera.top - camera.bottom) / (2 * halfHeight * 1.15)));
+  }
+  function animateView(destination, target, targetZoom) {
+    cancelTransition();
+    const fromPosition = camera.position.clone();
+    const fromTarget = controls.target.clone();
+    const fromZoom = camera.zoom;
+    const started = performance.now();
+    function animate(now) {
+      const progress = Math.min(1, (now - started) / 650);
+      const eased = progress * progress * (3 - 2 * progress);
+      const zoom = targetZoom();
+      camera.position.lerpVectors(fromPosition, destination, eased);
+      controls.target.lerpVectors(fromTarget, target, eased);
+      camera.zoom = fromZoom + (zoom - fromZoom) * eased;
+      camera.updateProjectionMatrix();
+      controls.update();
+      render();
+      if (progress < 1) transitionFrame = requestAnimationFrame(animate);
+    }
+    transitionFrame = requestAnimationFrame(animate);
   }
   function createCard(texture, width, height) {
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -238,6 +316,7 @@ async function initializeView() {
   }
   function startLive() {
     stopLive();
+    reset();
     if (!ui.preview.videoWidth || !ui.preview.videoHeight) return;
     // Reuse one small canvas for live video, at the same resolution as captured cards.
     liveCanvas = document.createElement('canvas');
@@ -259,10 +338,11 @@ async function initializeView() {
       }
     });
   }
+  controls.addEventListener('start', cancelTransition);
   controls.addEventListener('change', render);
   const observer = new ResizeObserver(() => {
     const { width, height } = ui.stage.getBoundingClientRect();
-    renderer.setSize(width - 2, height - 2, false);
+    renderer.setSize(Math.max(1, width - 2), Math.max(1, height - 2), false);
     fitProjection();
     render();
   });
@@ -271,12 +351,20 @@ async function initializeView() {
     event.preventDefault();
     closeCamera();
     ready = false;
-    document.querySelectorAll('#dissection input, #dissection select').forEach((control) => { control.disabled = true; });
+    document.querySelectorAll('#dissection input, #dissection select, #dissection button').forEach((control) => { control.disabled = true; });
     updateControls();
     status('3D view interrupted. Reload this page to continue.');
   });
   view = {
     reset,
+    toggleView() {
+      if (isFrontView()) showStack();
+      else {
+        fitProjection();
+        animateView(new THREE.Vector3(0, 0, 12), new THREE.Vector3(), () => 1);
+      }
+    },
+    showStack,
     startLive,
     stopLive,
     add(frame) {
@@ -289,12 +377,13 @@ async function initializeView() {
       slicer.sync(cards, liveCard);
     },
     clear() {
+      cancelTransition();
       cards.forEach(disposeCard);
       cards.length = 0;
       slicer.sync(cards, liveCard);
     },
   };
-  reset(false);
+  reset();
   ready = true;
   status();
   updateControls();

@@ -19,7 +19,7 @@ export function bindDialDrag(dial, input, root, host) {
     finish();
     event.preventDefault();
     input.focus({ preventScroll: true });
-    drag = { id: event.pointerId, x: event.clientX, value: Number(input.value) };
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, value: Number(input.value) };
     dial.classList.add('is-dragging');
     try { dial.setPointerCapture(event.pointerId); }
     catch { /* Document listeners still handle the drag if capture is unavailable. */ }
@@ -27,7 +27,7 @@ export function bindDialDrag(dial, input, root, host) {
   root.addEventListener('pointermove', (event) => {
     if (drag?.id !== event.pointerId) return;
     if (event.pointerType === 'mouse' && event.buttons === 0) { finish(); return; }
-    input.value = dragValue(drag.value, event.clientX - drag.x, Number(input.min), Number(input.max), Number(input.step) || 1, event.shiftKey);
+    input.value = dragValue(drag.value, (event.clientX - drag.x) + (drag.y - event.clientY), Number(input.min), Number(input.max), Number(input.step) || 1, event.shiftKey);
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const end = (event) => { if (drag?.id === event.pointerId) finish(); };
@@ -45,11 +45,11 @@ export function bindDialDrag(dial, input, root, host) {
 export function initializeDials(root = document) {
   root.querySelectorAll('.dial').forEach((dial) => {
     const input = dial.querySelector('input');
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = root.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 100 100');
     svg.setAttribute('aria-hidden', 'true');
     for (const className of ['dial-track', 'dial-fill']) {
-      const path = document.createElementNS(svg.namespaceURI, 'path');
+      const path = root.createElementNS(svg.namespaceURI, 'path');
       path.setAttribute('d', 'M 24.544 75.456 A 36 36 0 1 1 75.456 75.456');
       path.setAttribute('pathLength', '100');
       path.setAttribute('class', className);
@@ -61,10 +61,10 @@ export function initializeDials(root = document) {
       const span = Number(input.max) - Number(input.min);
       const amount = span > 0 ? (Number(input.value) - Number(input.min)) / span : 0;
       fill.setAttribute('stroke-dasharray', `${amount * 100} 100`);
-      const output = document.getElementById(`${input.id}-value`);
+      const output = root.getElementById(`${input.id}-value`);
       input.setAttribute('aria-valuetext', output?.value || input.value);
     };
-    dial.title = 'Drag left or right. Arrow keys adjust; Shift-drag for fine control.';
+    dial.title = 'Drag left/right or up/down. Arrow keys adjust; Shift-drag for fine control.';
     bindDialDrag(dial, input, root, root.defaultView);
     // Slicer updates can also change range bounds and reset values programmatically.
     root.addEventListener('dialsupdate', paint);

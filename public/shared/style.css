@@ -10,6 +10,8 @@
 body { margin: 0; }
 button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
+/* Allow repeated taps without browser double-tap zoom; preserve pinch zoom. */
+button, .button { touch-action: manipulation; }
 button { border-radius: 0; }
 a { color: inherit; text-underline-offset: 3px; }
 button:focus-visible, a:focus-visible { outline: 2px solid #111; outline-offset: 4px; }

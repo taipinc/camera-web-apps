@@ -27,13 +27,41 @@ The build replaces `dist/` with a copy of `public/`. Automated tests cover geome
 
 Camera access on an iPhone requires a trusted HTTPS origin. Use the deployed GitHub Pages URL or a temporary HTTPS tunnel to the development server. A tunnel exposes the site externally; close it when testing is finished. A plain HTTP LAN address will not provide camera access.
 
+### Cloudflare Quick Tunnel (recommended)
+
+No Cloudflare account or domain is required. On macOS with Homebrew, install the tunnel client once:
+
+```sh
+brew install cloudflared
+```
+
+From the repository root, start the development server in one terminal:
+
+```sh
+npm run dev
+```
+
+In a second terminal, expose that server through a temporary HTTPS URL:
+
+```sh
+cloudflared tunnel --url http://localhost:8080
+```
+
+Keep both commands running. Copy the `https://<random-name>.trycloudflare.com` URL printed by `cloudflared` and open it in Safari on your iPhone. Choose **Frame stack**, or append `/app/frame-stack/` to the URL, then allow camera access when prompted. No iPhone certificate profile is needed; the tunnel provides trusted HTTPS while the local server continues using HTTP.
+
+The URL is public: anyone with it can access the development site while the tunnel is running. Press **Ctrl+C** in the tunnel terminal when finished, and in the server terminal to stop development serving. A new tunnel session generates a new URL. If you set a custom `PORT`, use the same port in the tunnel command. If the tunnel shows a **502** error, check that `http://localhost:8080` opens on the development computer and that the ports match.
+
+See [Cloudflare's Quick Tunnel documentation](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) for details and other installation options.
+
+### Optional local HTTPS
+
 Optional local HTTPS is available with `npm run setup:https` and `npm run dev:https` after installing mkcert and trusting its local CA. Trust on the development computer does not automatically extend to the iPhone; prefer the tunnel or deployed site to avoid installing certificate profiles. Generated certificates and private keys remain in ignored `.certs/`.
 
 ## Frame stack controls
 
-Choose FPS before capture. The target rate is limited by the camera and device; captures stop at 120 frames, with each image at most 480 pixels on its longest edge. Frames stay in memory and are lost on reload. A new capture replaces the previous stack.
+Click the circular FPS control to cycle through 1, 3, 6, 12, 24, and 30 before capture. The target rate is limited by the camera and device; choose a duration of 4 (default), 6, 8, 10, or 12 seconds with the adjacent seconds button. Capture stops at that duration or at the selected FPS × seconds frame limit, with each image at most 480 pixels on its longest edge. Frames stay in memory and are lost on reload. A new capture replaces the previous stack.
 
-The camera feed appears as the live front card. Stopping capture freezes the stack for dissection. Drag with one finger to rotate, two fingers to pan, and pinch to zoom. **Front view** resets rotation, pan, and zoom. Drag dials horizontally to adjust values; keyboard arrow keys also work, and Shift-drag provides finer adjustment. Rewind and slicers preserve the captured images.
+The power button starts the camera and becomes the record button in the same position. Press again to capture, and again to stop early; a completed timed capture closes the camera. The 3D view fills the viewport space remaining above the controls and resizes as slicer controls or screen orientation change. The frame counter overlays the 3D view during capture and disappears when capture stops. The camera feed appears as the live front card. Stopping capture freezes the stack for dissection. Drag with one finger to rotate, two fingers to pan, and pinch to zoom. The view button animates rotation, pan, and zoom to **Front view**; when already facing front, it animates to a centered isometric view of the full stack. Switch the slicer on to choose the adjacent Plane or Topography tab and adjust its controls inside the bordered panel. Slicing resets and hides Hide recent. Show surface sits to the right of the tabs and defaults to off. Drag dials right or up to increase values, left or down to decrease them; keyboard arrow keys also work, and Shift-drag provides finer adjustment. Rewind and slicers preserve the captured images.
 
 ## GitHub Pages deployment
 
@@ -49,3 +77,9 @@ You can also run **Deploy Pages** manually from Actions once the workflow exists
 See [GitHub's publishing-source instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) for the repository setting.
 
 Pushes and deployment remain under the repository owner's control. Do not commit `dist/`, captures, certificates, or private keys.
+
+## Shared UI controls
+
+Reusable controls live in `public/shared/controls.css`, `controls.js`, and `dials.js`; currently only frame-stack opts into them. Load `controls.css` after `shared/style.css`. Use `.circle-button` for icon buttons (with an accessible label), `.record-button` with `aria-pressed` for capture state, `.switch-control` for a labeled native checkbox switch, and `.segmented-control` for native radio choices. Lucide SVG assets and their license are under `public/shared/icons/`.
+
+For cycling buttons, declare `data-cycle-values`, an optional `data-cycle-label`, a starting `value`, and a child with `data-cycle-value`, then call `initializeCycleButtons()`. Value changes emit an `input` event. For arc dials, use `.dial` containing a labeled range input and an output named `<input-id>-value`, then call `initializeDials()`. Dispatch `dialsupdate` after changing range bounds, disabling, hiding, or resetting controls programmatically.

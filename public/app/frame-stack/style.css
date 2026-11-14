@@ -1,30 +1,56 @@
 .stack-app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  height: 100dvh;
+  min-height: 0;
   padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
-.sticky-view { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: #fff; padding-top: 4px; }
-.stack-stage { width: 100%; height: 48svh; min-height: 180px; background: #f3f3f3; border: 1px solid #ddd; }
-.stack-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-.stack-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13px; }
-.stack-meta button { padding: 6px 10px; min-height: 36px; font-size: 12px; }
+.stack-app > :not(.sticky-view) { flex-shrink: 0; }
+.stack-app .site-header { margin-bottom: 12px; }
+.sticky-view { flex: 1 1 0; min-height: 0; background: #fff; }
+.stack-stage { position: relative; width: 100%; height: 100%; min-height: 0; background: #f3f3f3; border: 1px solid #ddd; }
+.stack-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
 /* Keep the video playing as a texture source, without a second visible preview. */
 .camera-source { position: fixed; left: -2px; top: -2px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .capture-controls { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; width: 100%; margin: 8px 0 16px; }
-.capture-controls button { flex: 1 1 0; min-width: 0; height: 40px; min-height: 40px; padding: 4px; font-size: 12px; white-space: nowrap; }
-.fps-control { flex: 1 1 0; min-width: 0; display: flex; gap: 4px; align-items: center; justify-content: center; font-size: 11px; height: 40px; }
-select { font: inherit; border: 1px solid #111; border-radius: 0; padding: 6px; background: #fff; color: #111; height: 40px; min-height: 40px; }
-.fps-control select { min-width: 0; width: 46px; padding: 4px 0 4px 4px; }
 .dissection { width: 100%; padding: 0; margin: 0; }
 .dissection-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .mode-control { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .dial-bank { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 8px; width: 100%; }
-.dial { position: relative; display: flex; flex-direction: column; align-items: center; flex: 1 0 64px; gap: 2px; min-width: 0; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ew-resize; }
-.dial label { order: 0; font-size: 11px; line-height: 16px; text-align: center; white-space: nowrap; pointer-events: none; }
-.dial svg { order: 1; width: 60px; height: 60px; fill: none; stroke-width: 8; pointer-events: none; }
-.dial output { order: 2; font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; pointer-events: none; }
-.dial-track { stroke: #ddd; }
-.dial-fill { stroke: #111; }
-.dial input { position: absolute; top: 0; left: 50%; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; outline: none; }
-.dial.is-dragging .dial-fill, .dial:has(input:focus-visible) .dial-fill { stroke: #1769d2; }
-.dial:has(input:disabled) { opacity: 0.4; cursor: default; }
 .guide-control { display: flex; align-items: center; gap: 6px; min-height: 40px; font-size: 12px; }
 .guide-control input { accent-color: #111; }
+
+.capture-controls { justify-content: space-between; align-items: center; }
+.rewind-controls { margin-bottom: 12px; }
+
+.dissection-toolbar { flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start; gap: 12px; margin-bottom: 0; }
+.dissection-toolbar .mode-control { min-height: 44px; flex-shrink: 0; }
+.dissection-toolbar:has(.tab-list:not([hidden])) { border-bottom: 1px solid #111; }
+.dissection .tab-list { min-width: 0; }
+.dissection .tab-list [role="tab"] { padding: 10px 8px; }
+.dissection .tab-panel { border-top: 0; }
+.rewind-controls { margin-top: 12px; }
+
+.frame-count { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 4px 6px; background: rgb(255 255 255 / 85%); font-size: 12px; pointer-events: none; }
+.dissection-toolbar { gap: 6px; }
+.dissection-toolbar .guide-control { margin-left: auto; align-self: center; min-width: 0; gap: 4px; font-size: 11px; }
+.dissection-toolbar .guide-control input { margin: 0; flex-shrink: 0; }
+@media (max-width: 380px) {
+  .capture-controls { gap: 4px; }
+  .capture-controls .circle-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
+  .dissection-toolbar .mode-control { font-size: 11px; }
+  .dissection .tab-list [role="tab"] { padding: 10px 5px; font-size: 11px; }
+}
+
+/* Keep controls compact when landscape browser chrome leaves little height. */
+@media (max-height: 540px) {
+  .stack-app { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .stack-app .site-header { margin-bottom: 6px; }
+  .capture-controls { margin: 6px 0; }
+  .capture-controls .circle-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
+  .dissection .tab-panel { padding: 6px; }
+  .dissection .dial-bank { gap: 4px; }
+  .dissection .dial svg { width: 44px; height: 44px; }
+  .rewind-controls { margin: 4px 0 0; }
+}

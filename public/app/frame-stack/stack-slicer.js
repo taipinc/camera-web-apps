@@ -1,7 +1,7 @@
 import { cutDepth, frameSpacing, planeNormal, terrainMap, visibleFrame } from './slicing.js';
 
 export function createSlicer(THREE, scene, render) {
-  const ids = ['dissection', 'rewind', 'slice-mode', 'depth', 'position-x', 'position-y', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'show-surface'];
+  const ids = ['dissection', 'slicer-enabled', 'slice-types', 'rewind', 'depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'show-surface'];
   const ui = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   const mapSize = 64;
   const heightMap = new THREE.DataTexture(terrainMap(mapSize, 3, 0), mapSize, mapSize);
@@ -54,8 +54,16 @@ export function createSlicer(THREE, scene, render) {
 
   function update() {
     const count = cards.length;
-    const mode = ui['slice-mode'].value;
-    ui.dissection.querySelectorAll('input, select').forEach((control) => { control.disabled = !count; });
+    const selectedMode = ui.dissection.querySelector('[role="tab"][aria-selected="true"]').dataset.mode;
+    const mode = ui['slicer-enabled'].checked ? selectedMode : 'none';
+    ui['slice-types'].hidden = !ui['slicer-enabled'].checked;
+    ui.dissection.querySelectorAll('input, select, button').forEach((control) => { control.disabled = !count; });
+    const slicing = mode !== 'none';
+    const rewindDial = ui.rewind.closest('.dial');
+    rewindDial.hidden = slicing;
+    rewindDial.parentElement.hidden = slicing;
+    ui.rewind.disabled = !count || slicing;
+    if (slicing) ui.rewind.value = 0;
     ui.rewind.max = count;
     const hidden = Math.min(number('rewind'), count);
     ui.rewind.value = hidden;
@@ -65,13 +73,12 @@ export function createSlicer(THREE, scene, render) {
     ui.dissection.querySelectorAll('[data-slicer]').forEach((group) => {
       group.hidden = !group.dataset.slicer.split(' ').includes(mode);
     });
-    for (const id of ['depth', 'position-x', 'position-y', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed']) {
+    for (const id of ['depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed']) {
       const suffix = id.startsWith('tilt') ? '°' : ['noise-scale', 'noise-seed'].includes(id) ? '' : '%';
       document.getElementById(`${id}-value`).value = `${ui[id].value}${suffix}`;
     }
     uniforms.cutMode.value = mode === 'plane' ? 1 : mode === 'terrain' ? 2 : 0;
-    uniforms.cutPoint.value.set(number('position-x') / 100 * uniforms.cutSize.value.x / 2,
-      number('position-y') / 100 * uniforms.cutSize.value.y / 2, cutDepth(number('depth'), count));
+    uniforms.cutPoint.value.set(0, 0, cutDepth(number('depth'), count));
     uniforms.cutNormal.value.fromArray(planeNormal(number('tilt-x'), number('tilt-y'), number('tilt-z')));
     uniforms.cutAmplitude.value = number('noise-amount') / 100 * Math.max(0, count - 1) * frameSpacing;
     guide.visible = count > 0 && mode !== 'none' && ui['show-surface'].checked;

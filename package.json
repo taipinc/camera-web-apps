@@ -1,0 +1,17 @@
+{
+  "name": "camera-web-apps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:https": "node scripts/dev.mjs --https",
+    "setup:https": "node scripts/setup-https.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "node --check public/app/camera/camera.js && node --check public/shared/camera.js && node --check scripts/dev.mjs && node --check scripts/setup-https.mjs && node --check scripts/build.mjs && node --check public/app/frame-stack/frame-stack.js && node --check public/app/frame-stack/slicing.js && node --check public/app/frame-stack/stack-slicer.js && node --check public/app/frame-stack/dials.js && node --check public/app/frame-stack/capture-timing.js"
+  }
+}

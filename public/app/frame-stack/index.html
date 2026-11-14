@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Frame stack</title>
+    <link rel="stylesheet" href="../../shared/style.css">
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+      { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/" } }
+    </script>
+    <script type="module" src="frame-stack.js"></script>
+  </head>
+  <body>
+    <main class="stack-app">
+      <header class="site-header"><a href="../../">Apps</a><h1>Frame stack</h1></header>
+      <div class="sticky-view">
+        <div id="stage" class="stack-stage" aria-label="3D frame stack. One finger rotates; two fingers pan and pinch to zoom."></div>
+        <div class="stack-meta"><output id="count">0 / 120 frames</output><button id="reset" type="button" disabled>Front view</button></div>
+      </div>
+      <video id="preview" class="camera-source" autoplay muted playsinline aria-hidden="true"></video>
+      <div class="controls capture-controls" aria-label="Capture controls">
+        <button id="start" type="button" aria-label="Start camera" disabled>Start</button>
+        <button id="record" type="button" aria-pressed="false" disabled hidden>Capture</button>
+        <label class="fps-control" for="fps">FPS <select id="fps"><option>1</option><option>3</option><option selected>6</option><option>12</option><option>24</option><option>30</option></select></label>
+        <button id="flip" type="button" disabled>Flip</button>
+        <button id="clear" type="button" disabled>Clear</button>
+      </div>
+      <section id="dissection" class="dissection" aria-label="Dissect">
+        <div class="dissection-toolbar">
+          <label class="mode-control" for="slice-mode">Slicer
+            <select id="slice-mode" disabled><option value="none">Off</option><option value="plane">Plane</option><option value="terrain">Topography</option></select>
+          </label>
+          <label class="guide-control" data-slicer="plane terrain" hidden><input id="show-surface" type="checkbox" checked disabled> Show surface</label>
+        </div>
+        <div class="dial-bank">
+          <div class="dial"><label for="rewind">Hide recent</label><output id="rewind-value">0 frames</output><input id="rewind" type="range" min="0" max="0" step="1" value="0" disabled></div>
+          <div class="dial" data-slicer="plane terrain" hidden><label for="depth">Depth</label><output id="depth-value">50%</output><input id="depth" type="range" min="0" max="100" value="50" step="0.1" disabled></div>
+          <div class="dial" data-slicer="plane" hidden><label for="position-x">Position X</label><output id="position-x-value">0%</output><input id="position-x" type="range" min="-100" max="100" value="0" disabled></div>
+          <div class="dial" data-slicer="plane" hidden><label for="position-y">Position Y</label><output id="position-y-value">0%</output><input id="position-y" type="range" min="-100" max="100" value="0" disabled></div>
+          <div class="dial" data-slicer="plane" hidden><label for="tilt-x">Rotation X</label><output id="tilt-x-value">0°</output><input id="tilt-x" type="range" min="-180" max="180" value="0" disabled></div>
+          <div class="dial" data-slicer="plane" hidden><label for="tilt-y">Rotation Y</label><output id="tilt-y-value">0°</output><input id="tilt-y" type="range" min="-180" max="180" value="0" disabled></div>
+          <div class="dial" data-slicer="plane" hidden><label for="tilt-z">Rotation Z</label><output id="tilt-z-value">0°</output><input id="tilt-z" type="range" min="-180" max="180" value="0" disabled></div>
+          <div class="dial" data-slicer="terrain" hidden><label for="noise-amount">Noise height</label><output id="noise-amount-value">50%</output><input id="noise-amount" type="range" min="0" max="100" value="50" disabled></div>
+          <div class="dial" data-slicer="terrain" hidden><label for="noise-scale">Noise detail</label><output id="noise-scale-value">3</output><input id="noise-scale" type="range" min="1" max="10" value="3" step="0.1" disabled></div>
+          <div class="dial" data-slicer="terrain" hidden><label for="noise-seed">Noise variation</label><output id="noise-seed-value">0</output><input id="noise-seed" type="range" min="0" max="20" value="0" step="0.01" disabled></div>
+        </div>
+      </section>
+      <p id="status" class="status" role="status">Loading 3D view…</p>
+    </main>
+  </body>
+</html>

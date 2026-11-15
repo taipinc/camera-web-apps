@@ -15,32 +15,18 @@
 .camera-source { position: fixed; left: -2px; top: -2px; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .capture-controls { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; width: 100%; margin: 8px 0 16px; }
 .dissection { width: 100%; padding: 0; margin: 0; }
-.dissection-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.mode-control { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .dial-bank { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 8px; width: 100%; }
-.guide-control { display: flex; align-items: center; gap: 6px; min-height: 40px; font-size: 12px; }
-.guide-control input { accent-color: #111; }
-
-.capture-controls { justify-content: space-between; align-items: center; }
-.rewind-controls { margin-bottom: 12px; }
-
-.dissection-toolbar { flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start; gap: 12px; margin-bottom: 0; }
-.dissection-toolbar .mode-control { min-height: 44px; flex-shrink: 0; }
-.dissection-toolbar:has(.tab-list:not([hidden])) { border-bottom: 1px solid #111; }
-.dissection .tab-list { min-width: 0; }
-.dissection .tab-list [role="tab"] { padding: 10px 8px; }
-.dissection .tab-panel { border-top: 0; }
-.rewind-controls { margin-top: 12px; }
-
+.capture-controls { justify-content: space-between; align-items: center; margin-bottom: 0; }
+.capture-tools, .view-tools { display: flex; align-items: center; gap: 6px; }
+.capture-tools { flex: 1; justify-content: space-between; min-width: 0; }
+.view-tools { flex-shrink: 0; }
+.guide-control { display: flex; align-items: center; gap: 3px; font-size: 10px; max-width: 72px; }
+.guide-control input { margin: 0; accent-color: #111; flex-shrink: 0; }
 .frame-count { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 4px 6px; background: rgb(255 255 255 / 85%); font-size: 12px; pointer-events: none; }
-.dissection-toolbar { gap: 6px; }
-.dissection-toolbar .guide-control { margin-left: auto; align-self: center; min-width: 0; gap: 4px; font-size: 11px; }
-.dissection-toolbar .guide-control input { margin: 0; flex-shrink: 0; }
 @media (max-width: 380px) {
   .capture-controls { gap: 4px; }
   .capture-controls .circle-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
-  .dissection-toolbar .mode-control { font-size: 11px; }
-  .dissection .tab-list [role="tab"] { padding: 10px 5px; font-size: 11px; }
+  .capture-tools, .view-tools { gap: 4px; }
 }
 
 /* Keep controls compact when landscape browser chrome leaves little height. */
@@ -49,8 +35,11 @@
   .stack-app .site-header { margin-bottom: 6px; }
   .capture-controls { margin: 6px 0; }
   .capture-controls .circle-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
-  .dissection .tab-panel { padding: 6px; }
   .dissection .dial-bank { gap: 4px; }
   .dissection .dial svg { width: 44px; height: 44px; }
-  .rewind-controls { margin: 4px 0 0; }
 }
+
+.slicer-tools { flex: 1; min-width: 0; }
+.slicer-panel { padding-top: 12px; }
+@media (max-width: 380px) { .slicer-tools { gap: 4px; } }
+@media (max-height: 540px) { .slicer-panel { padding-top: 6px; } }

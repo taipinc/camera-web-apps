@@ -18,7 +18,7 @@ test('fine dial dragging reduces sensitivity tenfold', () => {
 });
 
 test('sampling maintains selected FPS despite callback jitter', () => {
-  for (const fps of [1, 3, 6, 12, 24, 30]) {
+  for (const fps of [1, 3, 6, 12, 24, 30, 48, 60]) {
     const interval = 1000 / fps;
     let next = 0;
     let captured = 0;

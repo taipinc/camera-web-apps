@@ -1,10 +1,10 @@
-import { cutDepth, frameSpacing, planeNormal, terrainMap, visibleFrame } from './slicing.js';
+import { cutDepth, frameSpacing, planeNormal, terrainMap } from './slicing.js';
 
 export function createSlicer(THREE, scene, render) {
-  const ids = ['dissection', 'slicer-enabled', 'slice-types', 'rewind', 'depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'show-surface'];
+  const ids = ['dissection', 'depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'opacity', 'show-surface'];
   const ui = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   const mapSize = 64;
-  const heightMap = new THREE.DataTexture(terrainMap(mapSize, 3, 0), mapSize, mapSize);
+  const heightMap = new THREE.DataTexture(terrainMap(mapSize, 1, 0), mapSize, mapSize);
   heightMap.minFilter = heightMap.magFilter = THREE.LinearFilter;
   heightMap.needsUpdate = true;
   const uniforms = {
@@ -47,6 +47,9 @@ export function createSlicer(THREE, scene, render) {
   guide.frustumCulled = false;
   guide.visible = false;
   scene.add(guide);
+  let active = false;
+  let depthMode = 'plane';
+  const depths = { plane: 0, terrain: 50 };
   let cards = [];
   let liveCard;
   let sizeKey = '';
@@ -54,26 +57,30 @@ export function createSlicer(THREE, scene, render) {
 
   function update() {
     const count = cards.length;
-    const selectedMode = ui.dissection.querySelector('[role="tab"][aria-selected="true"]').dataset.mode;
-    const mode = ui['slicer-enabled'].checked ? selectedMode : 'none';
-    ui['slice-types'].hidden = !ui['slicer-enabled'].checked;
-    ui.dissection.querySelectorAll('input, select, button').forEach((control) => { control.disabled = !count; });
-    const slicing = mode !== 'none';
-    const rewindDial = ui.rewind.closest('.dial');
-    rewindDial.hidden = slicing;
-    rewindDial.parentElement.hidden = slicing;
-    ui.rewind.disabled = !count || slicing;
-    if (slicing) ui.rewind.value = 0;
-    ui.rewind.max = count;
-    const hidden = Math.min(number('rewind'), count);
-    ui.rewind.value = hidden;
-    document.getElementById('rewind-value').value = `${hidden} frames`;
-    cards.forEach((card, index) => { card.visible = visibleFrame(index, count, hidden); });
-    if (liveCard) liveCard.visible = hidden === 0;
+    const selectedMode = ui.dissection.querySelector('[data-mode][aria-pressed="true"]').dataset.mode;
+    if (selectedMode !== depthMode) {
+      depths[depthMode] = number('depth');
+      ui.depth.value = depths[selectedMode];
+      depthMode = selectedMode;
+    }
+    const mode = active && count ? selectedMode : 'none';
+    ui.dissection.querySelectorAll('input, [data-mode]').forEach((control) => { control.disabled = !active || !count; });
+    const opacity = active ? number('opacity') / 100 : 1;
+    for (const card of liveCard ? [...cards, liveCard] : cards) {
+      const transparent = opacity < 1;
+      if (card.material.transparent !== transparent) {
+        card.material.transparent = transparent;
+        card.material.needsUpdate = true;
+      }
+      card.material.opacity = opacity;
+      // Let Three.js sort translucent planes back to front without depth occlusion.
+      card.material.depthWrite = !transparent;
+      card.visible = opacity > 0;
+    }
     ui.dissection.querySelectorAll('[data-slicer]').forEach((group) => {
       group.hidden = !group.dataset.slicer.split(' ').includes(mode);
     });
-    for (const id of ['depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed']) {
+    for (const id of ['depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'opacity']) {
       const suffix = id.startsWith('tilt') ? '°' : ['noise-scale', 'noise-seed'].includes(id) ? '' : '%';
       document.getElementById(`${id}-value`).value = `${ui[id].value}${suffix}`;
     }
@@ -105,6 +112,11 @@ export function createSlicer(THREE, scene, render) {
   });
 
   return {
+    setActive(value) {
+      if (active === value) return;
+      active = value;
+      update();
+    },
     attach(material) {
       material.onBeforeCompile = (shader) => {
         Object.assign(shader.uniforms, uniforms);
@@ -131,8 +143,6 @@ export function createSlicer(THREE, scene, render) {
           uniforms.cutSize.value.set(width, height);
           sizeKey = nextKey;
         }
-      } else {
-        ui.rewind.value = 0;
       }
       update();
     },

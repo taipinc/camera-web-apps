@@ -2,7 +2,7 @@ export function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export async function openCamera(facingMode) {
+export async function openCamera(facingMode, targetFps) {
   if (!window.isSecureContext) {
     throw new Error('Camera access requires HTTPS.');
   }
@@ -12,6 +12,7 @@ export async function openCamera(facingMode) {
   return navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
+      ...(targetFps ? { frameRate: { ideal: targetFps } } : {}),
       facingMode: { ideal: facingMode },
       width: { ideal: 1280 },
       height: { ideal: 720 },

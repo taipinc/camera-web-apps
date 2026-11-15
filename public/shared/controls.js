@@ -47,3 +47,16 @@ export function initializeTabs(root = document) {
     });
   });
 }
+
+// Exclusive, independently focusable buttons for choosing a tool or mode.
+export function initializeChoiceButtons(root = document) {
+  root.querySelectorAll('[data-choice-buttons]').forEach((group) => {
+    const buttons = [...group.querySelectorAll('button')];
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        buttons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        button.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+  });
+}

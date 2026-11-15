@@ -2,16 +2,16 @@ import { openCamera, stopStream, cameraError } from '../../shared/camera.js';
 import { frameDepth } from './slicing.js';
 import { createSlicer } from './stack-slicer.js';
 import { initializeDials } from '../../shared/dials.js';
-import { initializeCycleButtons, initializeTabs, updateCaptureButton } from '../../shared/controls.js';
+import { initializeCycleButtons, initializeChoiceButtons, updateCaptureButton } from '../../shared/controls.js';
 import { advanceCaptureTime } from './capture-timing.js';
 
-const ui = Object.fromEntries(['stage', 'count', 'reset', 'preview', 'capture', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
+const ui = Object.fromEntries(['stage', 'count', 'reset', 'preview', 'capture', 'capture-tools', 'slice-types', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
 let maxFrames = 120;
 let captureTimer;
 let frameInterval = 1000 / 30;
 initializeDials();
 initializeCycleButtons();
-initializeTabs();
+initializeChoiceButtons();
 // Chronological source images and timestamps remain separate from their 3D meshes.
 const frames = [];
 let stream;
@@ -31,13 +31,17 @@ function status(message = '') {
 }
 
 function updateControls() {
+  const dissecting = frames.length > 0 && !capturing;
+  ui['capture-tools'].hidden = dissecting;
+  ui['slice-types'].hidden = !dissecting;
+  view?.setSlicing(dissecting);
   updateCaptureButton(ui.capture, capturing ? 'recording' : stream ? (frames.length ? 'stopped' : 'record') : 'start');
   ui.capture.disabled = !ready || busy;
   ui.flip.disabled = !stream || busy || capturing;
   ui.clear.disabled = !frames.length || capturing;
   ui.reset.disabled = !ready;
-  ui.fps.disabled = capturing;
-  ui.duration.disabled = capturing;
+  ui.fps.disabled = capturing || busy;
+  ui.duration.disabled = capturing || busy;
   ui.count.hidden = !capturing;
   ui.count.value = `${frames.length} / ${maxFrames} frames`;
 }
@@ -78,7 +82,7 @@ async function startCamera() {
   updateControls();
   let next;
   try {
-    next = await openCamera(facing);
+    next = await openCamera(facing, Number(ui.fps.value));
     if (current !== request || document.hidden) { stopStream(next); return; }
     stream = next;
     const track = stream.getVideoTracks()[0];
@@ -145,9 +149,21 @@ ui.flip.addEventListener('click', () => {
   facing = facing === 'environment' ? 'user' : 'environment';
   startCamera();
 });
-ui.capture.addEventListener('click', () => {
+ui.capture.addEventListener('click', async () => {
   if (!stream) { startCamera(); return; }
   if (capturing) { stopCapture(); return; }
+  busy = true;
+  updateControls();
+  try {
+    await stream.getVideoTracks()[0].applyConstraints({ frameRate: { ideal: Number(ui.fps.value) } });
+  } catch (error) {
+    busy = false;
+    updateControls();
+    status(cameraError(error));
+    return;
+  }
+  busy = false;
+  if (!stream || document.hidden) { updateControls(); return; }
   clearFrames();
   status();
   startedAt = performance.now();
@@ -246,7 +262,7 @@ async function initializeView() {
     });
     const target = bounds.getCenter(new THREE.Vector3());
     const direction = new THREE.Vector3(1, 1, 1).normalize();
-    const destination = target.clone().addScaledVector(direction, 12);
+    const destination = target.clone().addScaledVector(direction, bounds.getSize(new THREE.Vector3()).length() + 12);
     const rotation = new THREE.Matrix4().lookAt(destination, target, camera.up);
     const inverse = new THREE.Quaternion().setFromRotationMatrix(rotation).invert();
     let halfWidth = 0;
@@ -357,6 +373,7 @@ async function initializeView() {
   });
   view = {
     reset,
+    setSlicing: slicer.setActive,
     toggleView() {
       if (isFrontView()) showStack();
       else {

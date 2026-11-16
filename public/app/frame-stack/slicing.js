@@ -1,6 +1,12 @@
 export const frameSpacing = 0.055;
 export const frontDepth = 2;
 
+// Give most of the dial to low per-frame alpha, where overlapping stacks change.
+export function opacityFromPercent(percent) {
+  const value = Math.max(0, Math.min(100, percent)) / 100;
+  return (1000 ** value - 1) / 999;
+}
+
 export function frameDepth(index, count) {
   return frontDepth - (count - 1 - index) * frameSpacing;
 }

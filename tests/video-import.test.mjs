@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { presentVideoFrames } from '../public/app/frame-stack/video-import.js';
-import { createCameraCycle } from '../public/shared/camera.js';
+import { cameraChoices, cameraIndicator, createCameraCycle } from '../public/shared/camera.js';
 
 test('video import preserves variable frame timing and normalizes the first timestamp', async () => {
   let clock = 100;
@@ -74,4 +74,39 @@ test('camera cycle falls back to facing modes when enumeration fails', async () 
   cycle.next();
   assert.equal(cycle.facing, 'user');
   assert.equal(cycle.deviceId, undefined);
+});
+
+test('physical cameras replace duplicate generic and composite rear devices', async () => {
+  const labels = ['Back Camera', 'Back Triple Camera', 'Back Dual Wide Camera', 'Back Ultra Wide Camera', 'Back Wide Camera', 'Back Telephoto Camera', 'Front Camera'];
+  const available = labels.map((label, index) => ({ kind: 'videoinput', label, deviceId: String(index) }));
+  assert.deepEqual(cameraChoices(available).map(({ label }) => label), labels.slice(3));
+  const cycle = createCameraCycle({ enumerateDevices: async () => available });
+  await cycle.sync({ label: 'Back Triple Camera', getSettings: () => ({ deviceId: '1', facingMode: 'environment' }) });
+  assert.equal(cycle.deviceId, '4');
+  // A stale default ID must not reset the cursor after each explicit selection.
+  for (const expected of ['5', '6', '3', '4']) {
+    cycle.next();
+    await cycle.sync({ getSettings: () => ({ deviceId: '1', facingMode: 'environment' }) });
+    assert.equal(cycle.deviceId, expected);
+  }
+});
+
+test('composite cameras remain available if no physical wide lens is exposed', () => {
+  const devices = ['Back Triple Camera', 'Front Camera'].map((label) => ({ kind: 'videoinput', label, deviceId: label }));
+  assert.deepEqual(cameraChoices(devices), devices);
+});
+
+test('generic Back Camera remains the wide lens when only the other physical lenses are named', () => {
+  const labels = ['Back Camera', 'Back Dual Camera', 'Back Triple Camera', 'Back Ultra Wide Camera', 'Back Telephoto Camera', 'Front Camera'];
+  const devices = labels.map((label) => ({ kind: 'videoinput', label, deviceId: label }));
+  assert.deepEqual(cameraChoices(devices).map(({ label }) => label), [labels[0], ...labels.slice(3)]);
+});
+
+test('camera indicators use available lens information without inventing telephoto ratios', () => {
+  assert.equal(cameraIndicator('Back Wide Camera').text, 'x1');
+  assert.equal(cameraIndicator('Back Ultra Wide Camera').text, 'x.5');
+  assert.equal(cameraIndicator('Back Telephoto Camera').text, 'Tele');
+  assert.equal(cameraIndicator('Back Telephoto Camera (5x)').text, 'x5');
+  assert.equal(cameraIndicator('Rear x2').text, 'x2');
+  assert.equal(cameraIndicator('Front Camera').front, true);
 });

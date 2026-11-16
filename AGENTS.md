@@ -21,6 +21,8 @@ Use JavaScript ES modules, two-space indentation, semicolons, and single-quoted 
 
 Keep the interface minimal: Arial, square corners, no shadows, and no explanatory copy beyond necessary controls and errors. Load dependencies only where needed. The frame-stack app loads pinned Three.js modules from jsDelivr through its import map; keep core and addons on the same version. Keep other apps independent of Three.js.
 
+Design app layouts for both orientations. In landscape, hide the Apps/name header and move control rows to vertical side rails: one row goes on the right; two rows go on opposite sides of the main view. Keep the view filling the available center space and use flex columns that distribute controls and scale their buttons, dials, and text down to keep every control visible. Respect device safe-area insets. Frame-stack implements this pattern; apply it to other apps as their layouts are updated.
+
 ## Frame Stack Guidelines
 
 Keep image planes upright in XY, facing +Z. The newest captured frame stays at the front; older frames move along -Z without vertical offsets. Use orthographic projection, one-finger rotation, two-finger pan/pinch, and a frontal reset. Keep the view sticky while the controls scroll.

@@ -1,4 +1,4 @@
-import { createCameraCycle, openCamera, stopStream, cameraError, recordingOptions, photoBlob } from '../../shared/camera.js';
+import { updateCameraButton, createCameraCycle, openCamera, stopStream, cameraError, recordingOptions, photoBlob } from '../../shared/camera.js';
 
 const ui = Object.fromEntries([
   'preview', 'start', 'photo', 'record', 'flip', 'stop', 'status',
@@ -22,6 +22,7 @@ function status(message = '') {
 }
 
 function updateControls() {
+  updateCameraButton(ui.flip, cameras.indicator);
   const active = Boolean(stream);
   const recording = Boolean(recorder);
   ui.start.hidden = active;

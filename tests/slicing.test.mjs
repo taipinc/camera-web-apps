@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cutDepth, frameDepth, frameSpacing, frontDepth, planeNormal, terrainMap, visibleFrame } from '../public/app/frame-stack/slicing.js';
+import { cutDepth, frameDepth, frameSpacing, frontDepth, opacityFromPercent, planeNormal, terrainMap, visibleFrame } from '../public/app/frame-stack/slicing.js';
+
+test('opacity curve spreads low alpha across the dial and retains exact transparent and opaque endpoints', () => {
+  assert.equal(opacityFromPercent(0), 0);
+  assert.equal(opacityFromPercent(100), 1);
+  assert.equal(opacityFromPercent(-10), 0);
+  assert.equal(opacityFromPercent(110), 1);
+  assert.ok(opacityFromPercent(50) > 0.02 && opacityFromPercent(50) < 0.04);
+  assert.ok(opacityFromPercent(75) > 0.15 && opacityFromPercent(75) < 0.2);
+  for (let percent = 1; percent <= 100; percent += 1) {
+    assert.ok(opacityFromPercent(percent) > opacityFromPercent(percent - 1));
+  }
+});
 
 test('new frames push older frames back without moving the front', () => {
   assert.equal(frameDepth(119, 120), frontDepth);

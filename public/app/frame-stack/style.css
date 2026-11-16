@@ -46,3 +46,70 @@
 
 .empty-actions { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
 .empty-actions button { pointer-events: auto; min-width: 80px; }
+
+/* In landscape, each portrait control row becomes a separate side rail. */
+@media (orientation: landscape) {
+  .stack-app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .stack-app .site-header { display: none; }
+  .stack-app:has(.slicer-panel:not([hidden])) { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .sticky-view { grid-column: 1; grid-row: 1; min-width: 0; }
+  .stack-app:has(.slicer-panel:not([hidden])) .sticky-view { grid-column: 2; }
+  .dissection { display: contents; }
+  .capture-controls {
+    grid-column: -2;
+    grid-row: 1;
+    flex-direction: column;
+    justify-content: space-evenly;
+    container-type: size;
+    width: 64px;
+    min-height: 0;
+    margin: 0;
+    padding: 6px;
+    gap: min(8px, 2cqh);
+    overflow: hidden;
+  }
+  .capture-tools, .slicer-tools, .view-tools {
+    display: contents;
+  }
+  .capture-controls .circle-button {
+    --button-size: min(48px, calc((100cqh - 40px) / 6));
+    flex: 0 1 var(--button-size);
+    width: var(--button-size);
+    height: var(--button-size);
+    min-height: 0;
+    font-size: min(16px, 5cqh);
+  }
+  .capture-controls .circle-button img { width: min(22px, 50%); height: min(22px, 50%); }
+  .capture-controls .cycle-button [data-cycle-value] { font-size: min(18px, 5cqh); }
+  .capture-controls .cycle-button small { font-size: min(9px, 2.8cqh); margin-top: min(3px, 0.8cqh); }
+  .view-tools { margin: 0; }
+  .guide-control { flex: 0 1 auto; min-height: 0; flex-direction: column; text-align: center; font-size: min(10px, 3cqh); }
+  .guide-control input { flex-shrink: 0; }
+  .slicer-controls {
+    grid-column: 1;
+    grid-row: 1;
+    width: 96px;
+    min-height: 0;
+    container-type: size;
+    overflow: hidden;
+  }
+  .slicer-controls:has(.slicer-panel[hidden]) { display: none; }
+  .slicer-panel { height: 100%; padding: 0 12px; }
+  .dissection .dial-bank { height: 100%; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: space-evenly; gap: min(8px, 2cqh); }
+  .dissection .dial { flex: 0 1 auto; min-height: 0; gap: min(2px, 0.5cqh); }
+  .dissection .dial label { font-size: min(11px, 3.5cqh); line-height: min(16px, 4.5cqh); }
+  .dissection .dial output { font-size: min(12px, 3.8cqh); line-height: min(16px, 4.5cqh); }
+  .dissection .dial svg {
+    --dial-size: max(0px, min(60px, calc((100cqh - 32px) / 5 - min(36px, 10cqh))));
+    width: var(--dial-size);
+    height: var(--dial-size);
+    flex-shrink: 0;
+  }
+  .stack-app > .status { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+}

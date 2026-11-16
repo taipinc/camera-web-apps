@@ -1,4 +1,4 @@
-import { cutDepth, frameSpacing, planeNormal, terrainMap } from './slicing.js';
+import { cutDepth, frameSpacing, opacityFromPercent, planeNormal, terrainMap } from './slicing.js';
 
 export function createSlicer(THREE, scene, render) {
   const ids = ['dissection', 'depth', 'tilt-x', 'tilt-y', 'tilt-z', 'noise-amount', 'noise-scale', 'noise-seed', 'opacity', 'show-surface'];
@@ -65,7 +65,7 @@ export function createSlicer(THREE, scene, render) {
     }
     const mode = active && count ? selectedMode : 'none';
     ui.dissection.querySelectorAll('input, [data-mode]').forEach((control) => { control.disabled = !active || !count; });
-    const opacity = active ? number('opacity') / 100 : 1;
+    const opacity = active ? opacityFromPercent(number('opacity')) : 1;
     for (const card of liveCard ? [...cards, liveCard] : cards) {
       const transparent = opacity < 1;
       if (card.material.transparent !== transparent) {

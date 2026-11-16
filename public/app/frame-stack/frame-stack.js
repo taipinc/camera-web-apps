@@ -1,10 +1,11 @@
-import { createCameraCycle, openCamera, stopStream, cameraError } from '../../shared/camera.js';
+import { updateCameraButton, createCameraCycle, openCamera, stopStream, cameraError } from '../../shared/camera.js';
 import { frameDepth } from './slicing.js';
 import { createSlicer } from './stack-slicer.js';
 import { initializeDials } from '../../shared/dials.js';
 import { initializeCycleButtons, initializeChoiceButtons, updateCaptureButton } from '../../shared/controls.js';
 import { advanceCaptureTime } from './capture-timing.js';
 import { importVideo } from './video-import.js';
+import { frameSize, resizeLiveCard } from './live-frame.js';
 
 const ui = Object.fromEntries(['empty-actions', 'new', 'load', 'video-file', 'stage', 'count', 'reset', 'preview', 'capture', 'capture-tools', 'slice-types', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
 let maxFrames = 120;
@@ -33,6 +34,7 @@ function status(message = '') {
 }
 
 function updateControls() {
+  updateCameraButton(ui.flip, cameras.indicator);
   const dissecting = frames.length > 0 && !capturing && !loading;
   ui['empty-actions'].hidden = Boolean(frames.length || stream || loading);
   ui.new.disabled = ui.load.disabled = !ready || busy || Boolean(loading);
@@ -140,9 +142,9 @@ function addSourceFrame(source, timestamp) {
   const height = source.videoHeight || source.height;
   if (!width || !height) throw new Error('Video frame is not ready yet.');
   const image = document.createElement('canvas');
-  const scale = Math.min(1, 480 / Math.max(width, height));
-  image.width = Math.max(1, Math.round(width * scale));
-  image.height = Math.max(1, Math.round(height * scale));
+  const size = frameSize(width, height);
+  image.width = size.width;
+  image.height = size.height;
   image.getContext('2d').drawImage(source, 0, 0, image.width, image.height);
   const frame = { image, timestamp };
   view.add(frame);
@@ -272,7 +274,9 @@ async function initializeView() {
   const slicer = createSlicer(THREE, scene, render);
   function fitProjection() {
     const aspect = ui.stage.clientWidth / Math.max(1, ui.stage.clientHeight);
-    const halfHeight = Math.max(2.4, imageHeight / 2 + 0.4, 2.3 / aspect);
+    // Fit the frame's actual proportions instead of reserving a fixed height.
+    const padding = 1.12;
+    const halfHeight = Math.max(imageHeight / 2, 3.8 / (2 * aspect)) * padding;
     camera.left = -halfHeight * aspect;
     camera.right = halfHeight * aspect;
     camera.top = halfHeight;
@@ -377,29 +381,40 @@ async function initializeView() {
     if (!ui.preview.videoWidth || !ui.preview.videoHeight) return;
     // Reuse one small canvas for live video, at the same resolution as captured cards.
     liveCanvas = document.createElement('canvas');
-    const scale = Math.min(1, 480 / Math.max(ui.preview.videoWidth, ui.preview.videoHeight));
-    liveCanvas.width = Math.round(ui.preview.videoWidth * scale);
-    liveCanvas.height = Math.round(ui.preview.videoHeight * scale);
+    const size = frameSize(ui.preview.videoWidth, ui.preview.videoHeight);
+    liveCanvas.width = size.width;
+    liveCanvas.height = size.height;
     liveContext = liveCanvas.getContext('2d');
     liveContext.drawImage(ui.preview, 0, 0, liveCanvas.width, liveCanvas.height);
     liveCard = createCard(new THREE.CanvasTexture(liveCanvas), liveCanvas.width, liveCanvas.height);
     liveCard.position.z = 2.055;
     lastVideoTime = -1;
     slicer.sync(cards, liveCard);
-    renderer.setAnimationLoop(() => {
-      if (ui.preview.readyState >= 2 && ui.preview.currentTime !== lastVideoTime) {
-        lastVideoTime = ui.preview.currentTime;
-        liveContext.drawImage(ui.preview, 0, 0, liveCanvas.width, liveCanvas.height);
-        liveCard.material.map.needsUpdate = true;
-        render();
-      }
-    });
+    renderer.setAnimationLoop(updateLive);
   }
+  function updateLive(force = false) {
+    if (!liveCard || ui.preview.readyState < 2 || !ui.preview.videoWidth || !ui.preview.videoHeight) return;
+    const resized = resizeLiveCard(THREE, ui.preview, liveCanvas, liveCard);
+    if (resized) {
+      imageHeight = liveCard.geometry.parameters.height;
+      fitProjection();
+    }
+    if (resized || force === true || ui.preview.currentTime !== lastVideoTime) {
+      lastVideoTime = ui.preview.currentTime;
+      liveContext.drawImage(ui.preview, 0, 0, liveCanvas.width, liveCanvas.height);
+      liveCard.material.map.needsUpdate = true;
+      if (resized) slicer.sync(cards, liveCard);
+      else render();
+    }
+  }
+  // Intrinsic video size can change after viewport orientation has settled.
+  ui.preview.addEventListener('resize', () => updateLive(true));
   controls.addEventListener('start', cancelTransition);
   controls.addEventListener('change', render);
   const observer = new ResizeObserver(() => {
     const { width, height } = ui.stage.getBoundingClientRect();
     renderer.setSize(Math.max(1, width - 2), Math.max(1, height - 2), false);
+    updateLive(true);
     fitProjection();
     render();
   });

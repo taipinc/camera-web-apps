@@ -43,3 +43,6 @@
 .slicer-panel { padding-top: 12px; }
 @media (max-width: 380px) { .slicer-tools { gap: 4px; } }
 @media (max-height: 540px) { .slicer-panel { padding-top: 6px; } }
+
+.empty-actions { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
+.empty-actions button { pointer-events: auto; min-width: 80px; }

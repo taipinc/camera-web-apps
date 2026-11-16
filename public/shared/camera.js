@@ -2,7 +2,7 @@ export function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export async function openCamera(facingMode, targetFps) {
+export async function openCamera(facingMode, targetFps, deviceId) {
   if (!window.isSecureContext) {
     throw new Error('Camera access requires HTTPS.');
   }
@@ -13,11 +13,40 @@ export async function openCamera(facingMode, targetFps) {
     audio: false,
     video: {
       ...(targetFps ? { frameRate: { ideal: targetFps } } : {}),
-      facingMode: { ideal: facingMode },
+      ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: facingMode } }),
       width: { ideal: 1280 },
       height: { ideal: 720 },
     },
   });
+}
+
+export function createCameraCycle(mediaDevices = navigator.mediaDevices) {
+  let devices = [];
+  let currentId;
+  let facing = 'environment';
+  return {
+    get facing() { return facing; },
+    get deviceId() { return currentId; },
+    async sync(track) {
+      const settings = track.getSettings();
+      currentId = settings.deviceId;
+      facing = settings.facingMode || facing;
+      try {
+        const available = await mediaDevices.enumerateDevices();
+        devices = available.filter((device, index) => device.kind === 'videoinput' && device.deviceId
+          && available.findIndex((other) => other.deviceId === device.deviceId) === index);
+      } catch { devices = []; }
+    },
+    next() {
+      if (devices.length) {
+        const index = devices.findIndex((device) => device.deviceId === currentId);
+        currentId = devices[(index + 1) % devices.length].deviceId;
+      } else {
+        currentId = undefined;
+        facing = facing === 'environment' ? 'user' : 'environment';
+      }
+    },
+  };
 }
 
 export function cameraError(error) {

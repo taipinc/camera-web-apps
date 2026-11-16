@@ -17,9 +17,10 @@
     <main class="stack-app">
       <header class="site-header"><a href="../../">Apps</a><h1>Frame stack</h1></header>
       <div class="sticky-view">
-        <div id="stage" class="stack-stage" aria-label="3D frame stack. One finger rotates; two fingers pan and pinch to zoom."><output id="count" class="frame-count" hidden>0 / 120 frames</output></div>
+        <div id="stage" class="stack-stage" aria-label="3D frame stack. One finger rotates; two fingers pan and pinch to zoom."><div id="empty-actions" class="empty-actions"><button id="new" type="button" disabled>New</button><button id="load" type="button" disabled>Load</button></div><output id="count" class="frame-count" hidden>0 / 120 frames</output></div>
 
       </div>
+      <input id="video-file" type="file" accept="video/*,.mov,.mp4,.m4v,.webm" hidden>
       <video id="preview" class="camera-source" autoplay muted playsinline aria-hidden="true"></video>
       <section id="dissection" class="dissection" aria-label="Capture and dissect">
         <div class="controls capture-controls" aria-label="Capture, slicer, and view controls">
@@ -27,7 +28,7 @@
             <button id="capture" class="circle-button capture-button" data-state="start" type="button" aria-label="Start camera" title="Start camera" aria-pressed="false" disabled><img src="../../shared/icons/power.svg" alt=""><span class="record-dot" aria-hidden="true" hidden></span></button>
             <button id="fps" class="circle-button cycle-button" type="button" value="30" data-cycle-values="1 3 6 12 24 30 48 60" data-cycle-label="fps" aria-label="30 fps. Click to change" title="Change FPS"><span data-cycle-value>30</span><small>fps</small></button>
             <button id="duration" class="circle-button cycle-button" type="button" value="4" data-cycle-values="4 6 8 10 12" data-cycle-label="sec" aria-label="4 sec. Click to change" title="Change capture duration"><span data-cycle-value>4</span><small>sec</small></button>
-            <button id="flip" class="circle-button" type="button" aria-label="Flip camera" title="Flip camera" disabled><img src="../../shared/icons/refresh-cw.svg" alt=""></button>
+            <button id="flip" class="circle-button" type="button" aria-label="Next camera" title="Next camera" disabled><img src="../../shared/icons/refresh-cw.svg" alt=""></button>
           </div>
           <div id="slice-types" class="choice-buttons slicer-tools" data-choice-buttons hidden role="group" aria-label="Slicer type">
             <button id="plane-slicer" class="circle-button" type="button" data-mode="plane" aria-pressed="true" aria-label="Plane slicer" title="Plane slicer" aria-controls="slice-panel" disabled><img src="../../shared/icons/scissors-line-dashed.svg" alt=""></button>

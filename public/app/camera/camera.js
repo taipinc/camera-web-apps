@@ -1,4 +1,4 @@
-import { openCamera, stopStream, cameraError, recordingOptions, photoBlob } from '../../shared/camera.js';
+import { createCameraCycle, openCamera, stopStream, cameraError, recordingOptions, photoBlob } from '../../shared/camera.js';
 
 const ui = Object.fromEntries([
   'preview', 'start', 'photo', 'record', 'flip', 'stop', 'status',
@@ -7,7 +7,7 @@ const ui = Object.fromEntries([
 
 let stream;
 let microphone;
-let facing = 'environment';
+const cameras = createCameraCycle();
 let busy = false;
 let recordingPending = false;
 let recorder;
@@ -94,11 +94,13 @@ async function startCamera() {
   updateControls();
   let nextStream;
   try {
-    nextStream = await openCamera(facing);
+    nextStream = await openCamera(cameras.facing, undefined, cameras.deviceId);
     if (request !== cameraRequest || document.hidden) {
       stopStream(nextStream);
       return;
     }
+    await cameras.sync(nextStream.getVideoTracks()[0]);
+    if (request !== cameraRequest || document.hidden) { stopStream(nextStream); return; }
     stream = nextStream;
     stream.getVideoTracks()[0].addEventListener('ended', () => {
       if (stream === nextStream) {
@@ -107,7 +109,7 @@ async function startCamera() {
       }
     });
     ui.preview.srcObject = stream;
-    const actualFacing = stream.getVideoTracks()[0].getSettings().facingMode || facing;
+    const actualFacing = stream.getVideoTracks()[0].getSettings().facingMode || cameras.facing;
     ui.preview.classList.toggle('mirrored', actualFacing === 'user');
     await ui.preview.play();
   } catch (error) {
@@ -130,7 +132,7 @@ ui.stop.addEventListener('click', () => { closeCamera(); status(); });
 
 ui.flip.addEventListener('click', async () => {
   closeCamera();
-  facing = facing === 'environment' ? 'user' : 'environment';
+  cameras.next();
   await startCamera();
 });
 

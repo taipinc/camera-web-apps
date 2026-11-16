@@ -1,11 +1,12 @@
-import { openCamera, stopStream, cameraError } from '../../shared/camera.js';
+import { createCameraCycle, openCamera, stopStream, cameraError } from '../../shared/camera.js';
 import { frameDepth } from './slicing.js';
 import { createSlicer } from './stack-slicer.js';
 import { initializeDials } from '../../shared/dials.js';
 import { initializeCycleButtons, initializeChoiceButtons, updateCaptureButton } from '../../shared/controls.js';
 import { advanceCaptureTime } from './capture-timing.js';
+import { importVideo } from './video-import.js';
 
-const ui = Object.fromEntries(['stage', 'count', 'reset', 'preview', 'capture', 'capture-tools', 'slice-types', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
+const ui = Object.fromEntries(['empty-actions', 'new', 'load', 'video-file', 'stage', 'count', 'reset', 'preview', 'capture', 'capture-tools', 'slice-types', 'duration', 'flip', 'clear', 'status', 'fps'].map((id) => [id, document.getElementById(id)]));
 let maxFrames = 120;
 let captureTimer;
 let frameInterval = 1000 / 30;
@@ -15,7 +16,8 @@ initializeChoiceButtons();
 // Chronological source images and timestamps remain separate from their 3D meshes.
 const frames = [];
 let stream;
-let facing = 'environment';
+let loading;
+const cameras = createCameraCycle();
 let busy = false;
 let ready = false;
 let capturing = false;
@@ -31,18 +33,20 @@ function status(message = '') {
 }
 
 function updateControls() {
-  const dissecting = frames.length > 0 && !capturing;
+  const dissecting = frames.length > 0 && !capturing && !loading;
+  ui['empty-actions'].hidden = Boolean(frames.length || stream || loading);
+  ui.new.disabled = ui.load.disabled = !ready || busy || Boolean(loading);
   ui['capture-tools'].hidden = dissecting;
   ui['slice-types'].hidden = !dissecting;
   view?.setSlicing(dissecting);
   updateCaptureButton(ui.capture, capturing ? 'recording' : stream ? (frames.length ? 'stopped' : 'record') : 'start');
-  ui.capture.disabled = !ready || busy;
+  ui.capture.disabled = !ready || busy || Boolean(loading);
   ui.flip.disabled = !stream || busy || capturing;
-  ui.clear.disabled = !frames.length || capturing;
+  ui.clear.disabled = (!frames.length && !loading) || capturing;
   ui.reset.disabled = !ready;
-  ui.fps.disabled = capturing || busy;
-  ui.duration.disabled = capturing || busy;
-  ui.count.hidden = !capturing;
+  ui.fps.disabled = capturing || busy || Boolean(loading);
+  ui.duration.disabled = capturing || busy || Boolean(loading);
+  ui.count.hidden = !capturing && !loading;
   ui.count.value = `${frames.length} / ${maxFrames} frames`;
 }
 
@@ -65,6 +69,8 @@ function stopCapture() {
 
 function closeCamera() {
   request += 1;
+  loading?.abort();
+  loading = undefined;
   stopCapture();
   view?.stopLive();
   stopStream(stream);
@@ -82,7 +88,9 @@ async function startCamera() {
   updateControls();
   let next;
   try {
-    next = await openCamera(facing, Number(ui.fps.value));
+    next = await openCamera(cameras.facing, Number(ui.fps.value), cameras.deviceId);
+    if (current !== request || document.hidden) { stopStream(next); return; }
+    await cameras.sync(next.getVideoTracks()[0]);
     if (current !== request || document.hidden) { stopStream(next); return; }
     stream = next;
     const track = stream.getVideoTracks()[0];
@@ -109,17 +117,7 @@ function captureFrame(now) {
   if (!capturing) return;
   try {
     if (now + 0.5 >= nextFrameAt && ui.preview.readyState >= 2) {
-      const width = ui.preview.videoWidth;
-      const height = ui.preview.videoHeight;
-      if (!width || !height) throw new Error('Camera is not ready yet.');
-      const image = document.createElement('canvas');
-      const scale = Math.min(1, 480 / Math.max(width, height));
-      image.width = Math.round(width * scale);
-      image.height = Math.round(height * scale);
-      image.getContext('2d').drawImage(ui.preview, 0, 0, image.width, image.height);
-      const frame = { image, timestamp: (now - startedAt) / 1000 };
-      view.add(frame);
-      frames.push(frame);
+      addSourceFrame(ui.preview, (now - startedAt) / 1000);
       nextFrameAt = advanceCaptureTime(now, nextFrameAt, frameInterval);
       updateControls();
       if (frames.length >= maxFrames) {
@@ -137,6 +135,49 @@ function captureFrame(now) {
   }
 }
 
+function addSourceFrame(source, timestamp) {
+  const width = source.videoWidth || source.width;
+  const height = source.videoHeight || source.height;
+  if (!width || !height) throw new Error('Video frame is not ready yet.');
+  const image = document.createElement('canvas');
+  const scale = Math.min(1, 480 / Math.max(width, height));
+  image.width = Math.max(1, Math.round(width * scale));
+  image.height = Math.max(1, Math.round(height * scale));
+  image.getContext('2d').drawImage(source, 0, 0, image.width, image.height);
+  const frame = { image, timestamp };
+  view.add(frame);
+  frames.push(frame);
+}
+
+ui.new.addEventListener('click', startCamera);
+ui.load.addEventListener('click', () => { ui['video-file'].value = ''; ui['video-file'].click(); });
+ui['video-file'].addEventListener('change', async () => {
+  const file = ui['video-file'].files[0];
+  if (!file || !ready || busy || loading || stream || frames.length) return;
+  const controller = new AbortController();
+  loading = controller;
+  maxFrames = 360;
+  view.reset();
+  status();
+  updateControls();
+  try {
+    const count = await importVideo(file, (canvas, timestamp) => {
+      addSourceFrame(canvas, timestamp);
+      updateControls();
+    }, controller.signal);
+    if (!count) throw new Error('No video frames could be loaded.');
+  } catch (error) {
+    if (!controller.signal.aborted) status(error.message || 'Could not load this video.');
+  } finally {
+    if (loading === controller) {
+      loading = undefined;
+      view.showStack();
+      updateControls();
+    }
+    ui['video-file'].value = '';
+  }
+});
+
 function clearFrames() {
   view.clear();
   frames.forEach(({ image }) => { image.width = image.height = 0; });
@@ -146,7 +187,7 @@ function clearFrames() {
 
 ui.flip.addEventListener('click', () => {
   closeCamera();
-  facing = facing === 'environment' ? 'user' : 'environment';
+  cameras.next();
   startCamera();
 });
 ui.capture.addEventListener('click', async () => {
@@ -183,8 +224,8 @@ for (const control of [ui.fps, ui.duration]) {
   });
 }
 ui.clear.addEventListener('click', () => {
+  closeCamera();
   clearFrames();
-  if (stream) view.startLive();
   status();
 });
 ui.reset.addEventListener('click', () => view.toggleView());

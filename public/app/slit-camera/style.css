@@ -1,0 +1,53 @@
+.slit-app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  height: 100dvh;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+}
+.slit-app .site-header { flex-shrink: 0; margin-bottom: 12px; }
+.stage { position: relative; flex: 1; min-height: 0; min-width: 0; background: #f3f3f3; border: 1px solid #ddd; }
+.stage video, .stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.stage canvas { image-rendering: pixelated; }
+/* Keep the camera source playing while the slit image is visible. */
+.stage video.source-only { inset: auto; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.frame-count { position: absolute; top: 8px; left: 8px; padding: 4px 6px; background: rgb(255 255 255 / 85%); font-size: 12px; pointer-events: none; }
+.slit-app .controls { flex-shrink: 0; flex-wrap: nowrap; justify-content: space-between; gap: 6px; margin-top: 8px; }
+.slit-app .status { flex-shrink: 0; }
+.editing-controls { display: flex; flex-shrink: 0; justify-content: center; padding-top: 12px; }
+.editing-controls .dial { flex: 1 1 0; max-width: 96px; }
+@media (max-width: 380px) {
+  .slit-app .circle-button { flex-basis: 40px; width: 40px; height: 40px; min-height: 40px; }
+}
+@media (orientation: landscape) {
+  .slit-app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .slit-app .site-header { display: none; }
+  .slit-app:has(.editing-controls:not([hidden])) { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .slit-app .stage { grid-column: 1; grid-row: 1; }
+  .slit-app .controls { grid-column: 2; grid-row: 1; }
+  .slit-app:has(.editing-controls:not([hidden])) .stage { grid-column: 2; }
+  .slit-app:has(.editing-controls:not([hidden])) .controls { grid-column: 3; }
+  .editing-controls { grid-column: 1; grid-row: 1; flex-direction: column; justify-content: space-evenly; padding: 0; }
+  .editing-controls .dial { flex: 0 1 auto; gap: min(2px, 0.5dvh); }
+  .editing-controls .dial svg {
+    --dial-size: max(0px, min(60px, calc((100dvh - 80px) / 4 - min(36px, 11dvh))));
+    width: var(--dial-size); height: var(--dial-size); flex-shrink: 0;
+  }
+  .editing-controls .dial label, .editing-controls .dial output { font-size: min(12px, 4dvh); line-height: min(16px, 5dvh); }
+  .slit-app .controls { flex-direction: column; align-items: center; justify-content: space-around; margin: 0; gap: min(6px, 1dvh); }
+  .slit-app .circle-button {
+    --size: max(0px, min(48px, calc((100dvh - 80px) / 5)));
+    flex: 0 1 var(--size); width: var(--size); height: var(--size); min-height: 0;
+    font-size: min(16px, 4dvh);
+  }
+  .slit-app .circle-button img { width: min(22px, 5dvh); height: min(22px, 5dvh); }
+  .slit-app .cycle-button [data-cycle-value] { font-size: min(18px, 4dvh); }
+  .slit-app .cycle-button small { font-size: min(9px, 2dvh); margin-top: min(3px, 0.5dvh); }
+  .slit-app .status { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+}

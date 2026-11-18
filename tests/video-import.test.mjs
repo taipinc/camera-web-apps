@@ -36,6 +36,22 @@ test('video import stops after the first 360 frames and closes its iterator', as
   assert.ok(closed);
 });
 
+test('video import supports a 420-frame override without changing the default limit', async () => {
+  let closed = false;
+  let added = 0;
+  async function* samples() {
+    try {
+      for (let index = 0; index < 500; index += 1) yield { canvas: index, timestamp: index / 30 };
+    } finally { closed = true; }
+  }
+  const count = await presentVideoFrames(samples(), () => { added += 1; }, new AbortController().signal, {
+    limit: 420, now: () => 0, wait: async () => {},
+  });
+  assert.equal(count, 420);
+  assert.equal(added, 420);
+  assert.equal(closed, true);
+});
+
 test('cancelling during a frame wait prevents that frame being added and closes the iterator', async () => {
   const controller = new AbortController();
   let closed = false;

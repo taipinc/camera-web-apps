@@ -1,5 +1,8 @@
 import { frameSize } from '../frame-stack/live-frame.js';
 
+export const SOURCE_MAX_EDGE = 576;
+export const IMPORT_FRAME_LIMIT = 420;
+
 export function captureFrameLimit(fps, duration) {
   return fps * duration;
 }
@@ -49,7 +52,7 @@ export function createFrameStore(createCanvas = () => document.createElement('ca
       const height = source.videoHeight || source.height;
       if (!width || !height) throw new Error('Video frame is not ready yet.');
       const image = createCanvas();
-      const size = frameSize(width, height);
+      const size = frameSize(width, height, SOURCE_MAX_EDGE);
       image.width = size.width;
       image.height = size.height;
       image.getContext('2d').drawImage(source, 0, 0, image.width, image.height);

@@ -16,8 +16,10 @@
       <div class="stage">
         <video id="preview" autoplay muted playsinline aria-label="Camera preview"></video>
         <canvas id="image" width="1" height="1" aria-label="Slit image, one sampled column per captured frame" hidden></canvas>
+        <div id="empty-actions" class="empty-actions"><button id="new" type="button">New</button><button id="load" type="button">Load</button></div>
         <output id="count" class="frame-count" hidden>0 / 120 frames</output>
       </div>
+      <input id="video-file" type="file" accept="video/*,.mov,.mp4,.m4v,.webm" hidden>
       <section class="controls" aria-label="Capture controls">
         <button id="capture" class="circle-button capture-button" data-state="start" type="button" aria-label="Start camera" title="Start camera" aria-pressed="false"><img src="../../shared/icons/power.svg" alt=""><span class="record-dot" aria-hidden="true" hidden></span></button>
         <button id="fps" class="circle-button cycle-button" type="button" value="30" data-cycle-values="1 3 6 12 24 30 48 60" data-cycle-label="fps" aria-label="30 fps. Click to change" title="Change FPS"><span data-cycle-value>30</span><small>fps</small></button>

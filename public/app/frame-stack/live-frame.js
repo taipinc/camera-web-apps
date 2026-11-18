@@ -1,5 +1,5 @@
-export function frameSize(width, height) {
-  const scale = Math.min(1, 480 / Math.max(width, height));
+export function frameSize(width, height, maxEdge = 480) {
+  const scale = Math.min(1, maxEdge / Math.max(width, height));
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 

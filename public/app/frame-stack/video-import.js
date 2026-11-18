@@ -34,7 +34,7 @@ function waitForFrame(delay, signal) {
   });
 }
 
-export async function importVideo(file, onFrame, signal) {
+export async function importVideo(file, onFrame, signal, { limit = 360, maxEdge = 480 } = {}) {
   if (typeof VideoDecoder === 'undefined') {
     throw new Error('Video loading requires a browser with WebCodecs support. Try a newer Safari or Chrome.');
   }
@@ -49,12 +49,12 @@ export async function importVideo(file, onFrame, signal) {
     if (!await track.canDecode()) throw new Error('This browser cannot decode this video. Try an H.264 MP4 file.');
     const [width, height] = await Promise.all([track.getDisplayWidth(), track.getDisplayHeight()]);
     const longest = Math.max(width, height);
-    const size = Math.min(480, longest);
+    const size = Math.min(maxEdge, longest);
     const sink = new CanvasSink(track, {
       ...(width >= height ? { width: size } : { height: size }),
       poolSize: 1,
     });
-    return await presentVideoFrames(sink.canvases(), onFrame, signal);
+    return await presentVideoFrames(sink.canvases(), onFrame, signal, { limit });
   } finally {
     signal.removeEventListener('abort', abort);
     input.dispose();

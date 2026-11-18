@@ -16,22 +16,31 @@ test('retains complete resized frames and timestamps independently of the slit i
   store.add(source, 0.25);
   const [first, second] = store.frames;
   assert.notEqual(first.image, second.image);
-  assert.equal(first.image.width, 480);
-  assert.equal(first.image.height, 270);
+  assert.equal(first.image.width, 576);
+  assert.equal(first.image.height, 324);
   assert.equal(second.timestamp, 0.25);
-  assert.deepEqual(first.image.getContext().calls, [[source, 0, 0, 480, 270]]);
+  assert.deepEqual(first.image.getContext().calls, [[source, 0, 0, 576, 324]]);
   const output = canvas();
   store.render(output);
   assert.equal(output.width, 2);
-  assert.equal(output.height, 270);
+  assert.equal(output.height, 324);
   assert.equal(output.getContext().imageSmoothingEnabled, false);
   assert.deepEqual(output.getContext().calls, [
-    [first.image, 240, 0, 1, 270, 0, 0, 1, 270],
-    [second.image, 240, 0, 1, 270, 1, 0, 1, 270],
+    [first.image, 288, 0, 1, 324, 0, 0, 1, 324],
+    [second.image, 288, 0, 1, 324, 1, 0, 1, 324],
   ]);
   store.render(canvas());
-  assert.equal(first.image.width, 480);
+  assert.equal(first.image.width, 576);
   assert.equal(first.image.getContext().calls.length, 1);
+});
+
+test('576-pixel source limit preserves aspect ratios and does not upscale smaller frames', () => {
+  const store = createFrameStore(canvas);
+  for (const [width, height] of [[1920, 1080], [1080, 1920], [1000, 1000], [320, 240]]) {
+    store.add({ width, height }, 0);
+  }
+  assert.deepEqual(store.frames.map(({ image }) => [image.width, image.height]),
+    [[576, 324], [324, 576], [576, 576], [320, 240]]);
 });
 
 test('preserves differently oriented sources and aligns their strips to the first height', () => {

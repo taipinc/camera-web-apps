@@ -20,6 +20,25 @@ test('video import preserves variable frame timing and normalizes the first time
   assert.equal(frames[0].timestamp, 0);
 });
 
+test('a decode stall rebases playback instead of bursting through overdue frames', async () => {
+  let clock = 0;
+  const waits = [];
+  const displayed = [];
+  async function* samples() {
+    yield { timestamp: 0 };
+    clock += 2000;
+    yield { timestamp: 0.04 };
+    yield { timestamp: 0.08 };
+    yield { timestamp: 0.12 };
+  }
+  await presentVideoFrames(samples(), () => displayed.push(clock), new AbortController().signal, {
+    now: () => clock,
+    wait: async (delay) => { waits.push(Math.round(delay)); clock += delay; },
+  });
+  assert.deepEqual(waits, [0, 0, 40, 40]);
+  assert.deepEqual(displayed, [0, 2000, 2040, 2080]);
+});
+
 test('video import stops after the first 360 frames and closes its iterator', async () => {
   let closed = false;
   let read = 0;

@@ -34,6 +34,24 @@ test('retains complete resized frames and timestamps independently of the slit i
   assert.equal(first.image.getContext().calls.length, 1);
 });
 
+test('pixel width repeats each sampled column without changing the stored sources', () => {
+  const store = createFrameStore(canvas);
+  store.add({ width: 10, height: 8 }, 0);
+  store.add({ width: 10, height: 8 }, 1);
+  for (let pixelWidth = 1; pixelWidth <= 6; pixelWidth += 1) {
+    const output = canvas();
+    store.render(output, 50, 50, 0, 1, pixelWidth);
+    assert.equal(output.width, 2 * pixelWidth);
+    assert.equal(output.height, 8);
+    assert.deepEqual(output.getContext().calls.map((call) => call.slice(5)), [
+      [0, 0, pixelWidth, 8], [pixelWidth, 0, pixelWidth, 8],
+    ]);
+    assert.equal(store.frames[0].image.width, 10);
+  }
+  const html = readFileSync(new URL('../public/app/slit-camera/index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="pxw"[^>]*data-cycle-values="1 2 3 4 5 6"/);
+});
+
 test('576-pixel source limit preserves aspect ratios and does not upscale smaller frames', () => {
   const store = createFrameStore(canvas);
   for (const [width, height] of [[1920, 1080], [1080, 1920], [1000, 1000], [320, 240]]) {

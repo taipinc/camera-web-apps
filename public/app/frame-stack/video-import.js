@@ -16,6 +16,8 @@ export async function presentVideoFrames(samples, onFrame, signal, {
     const timestamp = sample.timestamp - firstTimestamp;
     await wait(Math.max(0, started + timestamp * 1000 - now()), signal);
     signal.throwIfAborted();
+    // Decode stalls must slow playback, not cause a burst of catch-up frames.
+    started = Math.max(started, now() - timestamp * 1000);
     onFrame(sample.canvas, timestamp);
     if (++count >= limit) break;
   }
@@ -25,10 +27,19 @@ export async function presentVideoFrames(samples, onFrame, signal, {
 function waitForFrame(delay, signal) {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
-    const abort = () => { clearTimeout(timer); reject(signal.reason); };
+    let animation;
+    const abort = () => {
+      clearTimeout(timer);
+      if (animation !== undefined) cancelAnimationFrame(animation);
+      reject(signal.reason);
+    };
     const timer = setTimeout(() => {
-      signal.removeEventListener('abort', abort);
-      resolve();
+      // A timer alone can run many times between paints. Present at most one
+      // frame per screen refresh, even for high-FPS files or slow decoding.
+      animation = requestAnimationFrame(() => {
+        signal.removeEventListener('abort', abort);
+        resolve();
+      });
     }, delay);
     signal.addEventListener('abort', abort, { once: true });
   });

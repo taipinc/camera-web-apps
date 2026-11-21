@@ -44,10 +44,8 @@ function pointer(type, properties = {}) {
   return event;
 }
 
-async function dialFixture() {
+async function dialFixture(root = new EventTarget(), host = new EventTarget()) {
   const { bindDialDrag } = await import('../public/shared/dials.js');
-  const root = new EventTarget();
-  const host = new EventTarget();
   const dial = new EventTarget();
   const classes = new Set();
   const captured = new Set();
@@ -65,6 +63,42 @@ async function dialFixture() {
   bindDialDrag(dial, input, root, host);
   return { dial, input, root, host, classes };
 }
+
+test('two touch pointers adjust separate dials independently and release independently', async () => {
+  const column = await dialFixture();
+  const scroll = await dialFixture(column.root, column.host);
+  column.dial.dispatchEvent(pointer('pointerdown'));
+  scroll.dial.dispatchEvent(pointer('pointerdown', { pointerId: 2, isPrimary: false, clientX: 100 }));
+  column.root.dispatchEvent(pointer('pointermove', { clientX: 18 }));
+  column.root.dispatchEvent(pointer('pointermove', { pointerId: 2, isPrimary: false, clientX: 82 }));
+  assert.equal(column.input.value, 60);
+  assert.equal(scroll.input.value, 40);
+  assert.equal(column.classes.has('is-dragging'), true);
+  assert.equal(scroll.classes.has('is-dragging'), true);
+  column.root.dispatchEvent(pointer('pointerup'));
+  assert.equal(column.classes.has('is-dragging'), false);
+  assert.equal(scroll.classes.has('is-dragging'), true);
+  column.root.dispatchEvent(pointer('pointermove', { pointerId: 2, isPrimary: false, clientX: 64 }));
+  assert.equal(scroll.input.value, 30);
+  column.root.dispatchEvent(pointer('pointercancel', { pointerId: 2, isPrimary: false }));
+  assert.equal(scroll.classes.has('is-dragging'), false);
+  column.root.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 0 }));
+  assert.equal(scroll.input.value, 30);
+});
+
+test('a second touch cannot steal an active dial and interruptions release all dials', async () => {
+  const first = await dialFixture();
+  const second = await dialFixture(first.root, first.host);
+  first.dial.dispatchEvent(pointer('pointerdown'));
+  first.dial.dispatchEvent(pointer('pointerdown', { pointerId: 2, isPrimary: false }));
+  first.root.dispatchEvent(pointer('pointermove', { pointerId: 2, clientX: 90 }));
+  assert.equal(first.input.value, 50);
+  first.root.dispatchEvent(pointer('pointermove', { clientX: 18 }));
+  assert.equal(first.input.value, 60);
+  second.dial.dispatchEvent(pointer('pointerdown', { pointerId: 2, isPrimary: false }));
+  first.host.dispatchEvent(new Event('pagehide'));
+  for (const fixture of [first, second]) assert.equal(fixture.classes.has('is-dragging'), false);
+});
 
 test('a fresh press recovers a dial after a missed pointer release', async () => {
   const { dial, input, root, classes } = await dialFixture();

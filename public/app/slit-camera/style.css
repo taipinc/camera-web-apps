@@ -6,11 +6,17 @@
   padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 .slit-app .site-header { flex-shrink: 0; margin-bottom: 12px; }
-.stage { position: relative; flex: 1; min-height: 0; min-width: 0; background: #f3f3f3; border: 1px solid #ddd; }
+.stage { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; background: #f3f3f3; border: 1px solid #ddd; }
 .stage video, .stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
-.stage canvas { image-rendering: pixelated; }
+.stage canvas { image-rendering: pixelated; object-fit: fill; }
+.slit-app .circle-button[aria-pressed="true"]:not(.capture-button) { background: #ddd; }
 .empty-actions { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
 .empty-actions button { pointer-events: auto; min-width: 80px; }
+.load-options { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #f3f3f3; overflow: auto; padding: 8px; }
+.load-frame-count, .load-option-actions { display: flex; align-items: center; gap: 8px; }
+.load-frame-count input { width: 76px; min-width: 0; padding: 8px 4px; text-align: center; font: inherit; border: 1px solid #aaa; border-radius: 0; background: white; }
+.load-frame-count button { padding: 8px; min-width: 36px; }
+.load-option-actions button { min-width: 80px; }
 /* Keep the camera source playing while the slit image is visible. */
 .stage video.source-only { inset: auto; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .frame-count { position: absolute; top: 8px; left: 8px; padding: 4px 6px; background: rgb(255 255 255 / 85%); font-size: 12px; pointer-events: none; }
@@ -38,7 +44,7 @@
   .editing-controls { grid-column: 1; grid-row: 1; flex-direction: column; justify-content: space-evenly; padding: 0; }
   .editing-controls .dial { flex: 0 1 auto; gap: min(2px, 0.5dvh); }
   .editing-controls .dial svg {
-    --dial-size: max(0px, min(60px, calc((100dvh - 80px) / 4 - min(36px, 11dvh))));
+    --dial-size: max(0px, min(60px, calc((100dvh - 80px) / 5 - min(36px, 11dvh))));
     width: var(--dial-size); height: var(--dial-size); flex-shrink: 0;
   }
   .editing-controls .dial label, .editing-controls .dial output { font-size: min(12px, 4dvh); line-height: min(16px, 5dvh); }

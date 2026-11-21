@@ -14,7 +14,10 @@ export function bindDialDrag(dial, input, root, host) {
     if (previous && dial.hasPointerCapture(previous.id)) dial.releasePointerCapture(previous.id);
   }
   dial.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || event.isPrimary === false || input.matches(':disabled')) return;
+    if (event.button !== 0 || input.matches(':disabled')) return;
+    // Each dial owns one pointer, including a secondary touch on another dial.
+    // A second finger on this dial must not steal its active drag.
+    if (drag && event.isPrimary === false) return;
     // A fresh primary press always recovers from a missing pointerup/cancel.
     finish();
     event.preventDefault();

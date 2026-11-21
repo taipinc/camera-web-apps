@@ -1,7 +1,7 @@
 import { frameSize } from '../frame-stack/live-frame.js';
 
 export const SOURCE_MAX_EDGE = 576;
-export const IMPORT_FRAME_LIMIT = 420;
+export const IMPORT_FRAME_LIMIT = 2400;
 
 export function captureFrameLimit(fps, duration) {
   return fps * duration;
@@ -59,8 +59,8 @@ export function createFrameStore(createCanvas = () => document.createElement('ca
       frames.push({ image, timestamp });
       return true;
     },
-    render(canvas, percent = 50, sweep = 50, amplitude = 0, frequency = 1) {
-      canvas.width = Math.max(1, frames.length);
+    render(canvas, percent = 50, sweep = 50, amplitude = 0, frequency = 1, pixelWidth = 1) {
+      canvas.width = Math.max(1, frames.length * pixelWidth);
       canvas.height = frames[0]?.image.height || 1;
       const context = canvas.getContext('2d');
       context.imageSmoothingEnabled = false;
@@ -69,7 +69,7 @@ export function createFrameStore(createCanvas = () => document.createElement('ca
         // the first frame's height. Each source still contributes one column.
         const position = samplingPosition(column, frames.length, percent, sweep, amplitude, frequency);
         context.drawImage(image, sampledColumn(image.width, position), 0, 1, image.height,
-          column, 0, 1, canvas.height);
+          column * pixelWidth, 0, pixelWidth, canvas.height);
       });
     },
     clear() {
